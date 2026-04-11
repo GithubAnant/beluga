@@ -23,21 +23,31 @@ interface MapInnerProps {
   onSelectFlight: (id: number | null) => void;
 }
 
-function getPlaneIcon(status: string, isSelected: boolean) {
-  const color =
-    status === "landing"
-      ? "#f59e0b"
-      : status === "enroute"
-        ? "#22c55e"
-        : "#ef4444";
+function getPlaneIcon(heading: number, status: string, isSelected: boolean) {
+  const size = isSelected ? 38 : 28;
+  const rotation = heading;
 
-  const size = isSelected ? 32 : 24;
-  const stroke = isSelected ? "white" : "none";
-  const strokeWidth = isSelected ? 2 : 0;
+  const statusColors: Record<string, string> = {
+    enroute: "#3b82f6",
+    landing: "#f59e0b",
+    takeoff: "#22c55e",
+   taxiing: "#6b7280",
+    holding: "#a855f7",
+  };
+  const color = statusColors[status] || "#3b82f6";
+
+  const body = isSelected
+    ? `<path d="M12 22 L3 13 L3 8 L12 3 L21 8 L21 13 Z" fill="${color}" stroke="white" stroke-width="1.5"/>`
+    : `<path d="M12 21 L4 13 L4 8 L12 3 L20 8 L20 13 Z" fill="${color}"/>`;
+
+  const cockpit = isSelected
+    ? `<path d="M12 7 L12 3" stroke="white" stroke-width="2" stroke-linecap="round"/>`
+    : `<path d="M12 6 L12 3" stroke="white" stroke-width="1.5" stroke-linecap="round"/>`;
 
   return L.divIcon({
-    html: `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="${color}" stroke="${stroke}" stroke-width="${strokeWidth}" xmlns="http://www.w3.org/2000/svg">
-      <path d="M12 2L8 10H2L4 12L2 14H8L12 22L16 14H22L20 12L22 10H16L12 2Z"/>
+    html: `<svg width="${size}" height="${size}" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" style="transform: rotate(${rotation}deg); transform-origin: center;">
+      ${body}
+      ${cockpit}
     </svg>`,
     className: "plane-icon",
     iconSize: [size, size],
@@ -82,7 +92,7 @@ export default function MapInner({ positions, selectedFlightId, onSelectFlight }
         <Marker
           key={pos.flight_id}
           position={[pos.latitude, pos.longitude]}
-          icon={getPlaneIcon(pos.status, pos.flight_id === selectedFlightId)}
+          icon={getPlaneIcon(pos.heading, pos.status, pos.flight_id === selectedFlightId)}
           eventHandlers={{
             click: () => onSelectFlight(pos.flight_id),
           }}

@@ -117,6 +117,30 @@
   --sidebar-ring: oklch(0.556 0 0);
 }
 
+.plane-icon {
+  background: transparent !important;
+  border: none !important;
+}
+
+.leaflet-marker-shadow {
+  display: none !important;
+}
+
+.leaflet-popup-content-wrapper {
+  background: #1e1e2e;
+  color: #e2e2e2;
+  border-radius: 8px;
+  border: 1px solid #3b3b4f;
+}
+
+.leaflet-popup-tip {
+  background: #1e1e2e;
+}
+
+.leaflet-popup-content {
+  margin: 8px 10px;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
