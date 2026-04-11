@@ -25,7 +25,7 @@ interface MapInnerProps {
 
 function getPlaneIcon(heading: number, status: string, isSelected: boolean) {
   const size = isSelected ? 42 : 32;
-  const rotation = heading;
+  const rotation = heading - 90;
 
   const statusColors: Record<string, string> = {
     enroute: "#3b82f6",
