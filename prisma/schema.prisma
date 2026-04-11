@@ -1,13 +1,124 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
 generator client {
-  provider = "prisma-client"
+  provider = "prisma-client-js"
   output   = "../src/generated/prisma"
 }
 
 datasource db {
   provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model Airport {
+  id        Int      @id @default(autoincrement())
+  name      String   @db.VarChar(100)
+  code      String   @unique @db.VarChar(10)
+  latitude  Float
+  longitude Float
+  runways   Runway[]
+  originFlights      Flight[] @relation("OriginAirport")
+  destinationFlights Flight[] @relation("DestinationAirport")
+
+  @@map("airports")
+}
+
+model Aircraft {
+  id       Int      @id @default(autoincrement())
+  callsign String   @unique @db.VarChar(20)
+  type     String   @db.VarChar(50)
+  airline  String   @db.VarChar(100)
+  flights  Flight[]
+
+  @@map("aircraft")
+}
+
+model Runway {
+  id        Int                @id @default(autoincrement())
+  airportId Int                @map("airport_id")
+  name      String             @db.VarChar(20)
+  lengthM   Int                @map("length_m")
+  heading   Int
+  airport   Airport            @relation(fields: [airportId], references: [id])
+  assignments RunwayAssignment[]
+
+  @@map("runways")
+}
+
+model Flight {
+  id                   Int                @id @default(autoincrement())
+  aircraftId           Int                @map("aircraft_id")
+  originAirportId      Int                @map("origin_airport_id")
+  destinationAirportId Int                @map("destination_airport_id")
+  status               FlightStatus       @default(scheduled)
+  createdAt            DateTime           @default(now()) @map("created_at")
+  updatedAt            DateTime           @updatedAt @map("updated_at")
+  aircraft             Aircraft           @relation(fields: [aircraftId], references: [id])
+  originAirport        Airport            @relation("OriginAirport", fields: [originAirportId], references: [id])
+  destinationAirport   Airport            @relation("DestinationAirport", fields: [destinationAirportId], references: [id])
+  positions            FlightPosition[]
+  runwayAssignments    RunwayAssignment[]
+  alerts               Alert[]
+
+  @@index([status])
+  @@map("flights")
+}
+
+enum FlightStatus {
+  scheduled
+  enroute
+  landing
+  landed
+}
+
+model FlightPosition {
+  id         Int      @id @default(autoincrement())
+  flightId   Int      @map("flight_id")
+  latitude   Float
+  longitude  Float
+  altitude   Float
+  heading    Float
+  speed      Float
+  recordedAt DateTime @default(now()) @map("recorded_at")
+  flight     Flight   @relation(fields: [flightId], references: [id])
+
+  @@index([flightId, recordedAt(sort: Desc)], name: "idx_position_latest")
+  @@map("flight_positions")
+}
+
+model RunwayAssignment {
+  id         Int       @id @default(autoincrement())
+  runwayId   Int       @map("runway_id")
+  flightId   Int       @map("flight_id")
+  assignedAt DateTime  @default(now()) @map("assigned_at")
+  clearedAt  DateTime? @map("cleared_at")
+  runway     Runway    @relation(fields: [runwayId], references: [id])
+  flight     Flight    @relation(fields: [flightId], references: [id])
+
+  @@index([runwayId, clearedAt], name: "idx_runway_occupancy")
+  @@map("runway_assignments")
+}
+
+model Alert {
+  id         Int       @id @default(autoincrement())
+  flightId   Int       @map("flight_id")
+  type       AlertType
+  message    String    @db.Text
+  severity   AlertSeverity
+  createdAt  DateTime  @default(now()) @map("created_at")
+  resolvedAt DateTime? @map("resolved_at")
+  flight     Flight    @relation(fields: [flightId], references: [id])
+
+  @@map("alerts")
+}
+
+enum AlertType {
+  conflict
+  proximity
+  runway
+}
+
+enum AlertSeverity {
+  low
+  medium
+  high
+  critical
 }
