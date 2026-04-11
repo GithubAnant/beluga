@@ -65,17 +65,17 @@ export function RunwayManager({ runways, flights, onAssign }: RunwayManagerProps
       <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-3">
         Runways
       </h2>
-      <div className="space-y-2">
+      <div className="space-y-1.5">
         {runwaysArr.map((runway) => (
           <div
             key={runway.id}
-            className={`rounded-lg border p-3 ${
+            className={`rounded-md border px-3 py-2 ${
               runway.activeAssignment
-                ? "border-amber-500/40 bg-amber-500/5"
-                : "border-emerald-500/40 bg-emerald-500/5"
+                ? "border-amber-500/30 bg-amber-500/5"
+                : "border-border/50 bg-card/50"
             }`}
           >
-            <div className="flex items-center justify-between mb-1">
+            <div className="flex items-center justify-between">
               <span className="font-mono font-bold text-sm">{runway.name}</span>
               <span className="text-xs text-muted-foreground">
                 {runway.lengthM}m · {runway.heading}°
@@ -83,7 +83,7 @@ export function RunwayManager({ runways, flights, onAssign }: RunwayManagerProps
             </div>
 
             {runway.activeAssignment ? (
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between mt-1.5">
                 <span className="text-xs text-amber-400">
                   Occupied: {runway.activeAssignment.flight.aircraft.callsign}
                 </span>
@@ -98,9 +98,9 @@ export function RunwayManager({ runways, flights, onAssign }: RunwayManagerProps
                 </Button>
               </div>
             ) : (
-              <div className="flex items-center gap-2">
+              <div className="mt-1.5">
                 <select
-                  className="flex-1 text-xs bg-transparent border border-border rounded px-2 py-1"
+                  className="w-full text-xs bg-background/50 border-none rounded px-2 py-1 text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
                   defaultValue=""
                   onChange={(e) => {
                     if (e.target.value) {
