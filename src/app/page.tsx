@@ -52,7 +52,7 @@ export default function Dashboard() {
   }, [mutatePositions, mutateFlights, mutateRunways, mutateAlerts, mutateSimStatus]);
 
   return (
-    <div className="flex flex-col h-screen overflow-hidden">
+    <div className="flex flex-col h-full overflow-hidden">
       <ControlBar
         simRunning={simStatus?.running ?? false}
         onRefresh={refreshAll}

@@ -32,11 +32,7 @@ export function ControlBar({ simRunning, onRefresh, onSimStatusChange }: Control
   return (
     <header className="flex items-center justify-between px-4 py-2 border-b border-border bg-card">
       <div className="flex items-center gap-3">
-        <h1 className="text-lg font-bold tracking-tight">
-          Beluga
-        </h1>
-        <span className="text-sm text-muted-foreground">Airport Control Tower</span>
-        <Badge variant={simRunning ? "default" : "secondary"} className="ml-2">
+        <Badge variant={simRunning ? "default" : "secondary"}>
           {simRunning ? "LIVE" : "PAUSED"}
         </Badge>
       </div>

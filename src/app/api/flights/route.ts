@@ -1,5 +1,31 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { FlightStatus } from "@/generated/prisma";
+
+export async function POST(request: Request) {
+  try {
+    const { aircraftId, originAirportId, destinationAirportId, status } = await request.json();
+    if (!aircraftId || !originAirportId || !destinationAirportId) {
+      return NextResponse.json(
+        { error: "aircraftId, originAirportId, and destinationAirportId are required" },
+        { status: 400 }
+      );
+    }
+    const flight = await prisma.flight.create({
+      data: {
+        aircraftId: parseInt(aircraftId),
+        originAirportId: parseInt(originAirportId),
+        destinationAirportId: parseInt(destinationAirportId),
+        status: (status as FlightStatus) || "scheduled",
+      },
+      include: { aircraft: true, originAirport: true, destinationAirport: true },
+    });
+    return NextResponse.json(flight, { status: 201 });
+  } catch (e: unknown) {
+    const message = e instanceof Error ? e.message : "Unknown error";
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
+}
 
 export async function GET() {
   try {
