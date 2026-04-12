@@ -13,7 +13,7 @@ export async function GET() {
       ) latest ON fp.flight_id = latest.flight_id AND fp.recorded_at = latest.max_time
       INNER JOIN flights f ON fp.flight_id = f.id
       INNER JOIN aircraft a ON f.aircraft_id = a.id
-      WHERE f.status != 'arrived' AND f.status != 'cancelled'
+      WHERE f.status NOT IN ('cancelled')
     `);
 
     // Serialize BigInt values for JSON response

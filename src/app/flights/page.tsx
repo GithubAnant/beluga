@@ -215,76 +215,114 @@ export default function FlightsPage() {
 
       {/* Create/Edit Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-[1100px] h-[480px]">
           <DialogHeader>
             <DialogTitle>{editing ? "Edit Flight" : "Create Flight"}</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 py-2">
-            {error && (
-              <div className="p-2 rounded border border-red-500/30 bg-red-500/10 text-red-400 text-sm">
-                {error}
+          <div className="flex gap-6 h-full py-2">
+            <div className="w-[340px] shrink-0 space-y-4 overflow-y-auto">
+              {error && (
+                <div className="p-2 rounded border border-red-500/30 bg-red-500/10 text-red-400 text-sm">
+                  {error}
+                </div>
+              )}
+              <div className="space-y-2">
+                <Label>Aircraft (FK → aircraft)</Label>
+                <select
+                  className="w-full text-sm bg-background border border-border rounded-md px-3 py-2"
+                  value={form.aircraftId}
+                  onChange={(e) => setForm({ ...form, aircraftId: e.target.value })}
+                >
+                  <option value="">Select aircraft...</option>
+                  {aircraft.map((a) => (
+                    <option key={a.id} value={a.id}>{a.callsign} — {a.airline}</option>
+                  ))}
+                </select>
               </div>
-            )}
-            <div className="space-y-2">
-              <Label>Aircraft (FK → aircraft)</Label>
-              <select
-                className="w-full text-sm bg-background border border-border rounded-md px-3 py-2"
-                value={form.aircraftId}
-                onChange={(e) => setForm({ ...form, aircraftId: e.target.value })}
-              >
-                <option value="">Select aircraft...</option>
-                {aircraft.map((a) => (
-                  <option key={a.id} value={a.id}>{a.callsign} — {a.airline}</option>
-                ))}
-              </select>
+              <div className="space-y-2">
+                <Label>Origin Airport (FK → airports)</Label>
+                <select
+                  className="w-full text-sm bg-background border border-border rounded-md px-3 py-2"
+                  value={form.originAirportId}
+                  onChange={(e) => setForm({ ...form, originAirportId: e.target.value })}
+                >
+                  <option value="">Select origin...</option>
+                  {airports.map((a) => (
+                    <option key={a.id} value={a.id}>{a.code} — {a.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-2">
+                <Label>Destination Airport (FK → airports)</Label>
+                <select
+                  className="w-full text-sm bg-background border border-border rounded-md px-3 py-2"
+                  value={form.destinationAirportId}
+                  onChange={(e) => setForm({ ...form, destinationAirportId: e.target.value })}
+                >
+                  <option value="">Select destination...</option>
+                  {airports.map((a) => (
+                    <option key={a.id} value={a.id}>{a.code} — {a.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-2">
+                <Label>Status (ENUM: FlightStatus)</Label>
+                <select
+                  className="w-full text-sm bg-background border border-border rounded-md px-3 py-2"
+                  value={form.status}
+                  onChange={(e) => setForm({ ...form, status: e.target.value })}
+                >
+                  <option value="scheduled">scheduled</option>
+                  <option value="enroute">enroute</option>
+                  <option value="landing">landing</option>
+                  <option value="landed">landed</option>
+                </select>
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
+                <Button
+                  onClick={handleSave}
+                  disabled={saving || !form.aircraftId || !form.originAirportId || !form.destinationAirportId}
+                >
+                  {saving ? "Saving..." : "Save"}
+                </Button>
+              </div>
             </div>
-            <div className="space-y-2">
-              <Label>Origin Airport (FK → airports)</Label>
-              <select
-                className="w-full text-sm bg-background border border-border rounded-md px-3 py-2"
-                value={form.originAirportId}
-                onChange={(e) => setForm({ ...form, originAirportId: e.target.value })}
-              >
-                <option value="">Select origin...</option>
-                {airports.map((a) => (
-                  <option key={a.id} value={a.id}>{a.code} — {a.name}</option>
-                ))}
-              </select>
-            </div>
-            <div className="space-y-2">
-              <Label>Destination Airport (FK → airports)</Label>
-              <select
-                className="w-full text-sm bg-background border border-border rounded-md px-3 py-2"
-                value={form.destinationAirportId}
-                onChange={(e) => setForm({ ...form, destinationAirportId: e.target.value })}
-              >
-                <option value="">Select destination...</option>
-                {airports.map((a) => (
-                  <option key={a.id} value={a.id}>{a.code} — {a.name}</option>
-                ))}
-              </select>
-            </div>
-            <div className="space-y-2">
-              <Label>Status (ENUM: FlightStatus)</Label>
-              <select
-                className="w-full text-sm bg-background border border-border rounded-md px-3 py-2"
-                value={form.status}
-                onChange={(e) => setForm({ ...form, status: e.target.value })}
-              >
-                <option value="scheduled">scheduled</option>
-                <option value="enroute">enroute</option>
-                <option value="landing">landing</option>
-                <option value="landed">landed</option>
-              </select>
-            </div>
-            <div className="flex justify-end gap-2 pt-2">
-              <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
-              <Button
-                onClick={handleSave}
-                disabled={saving || !form.aircraftId || !form.originAirportId || !form.destinationAirportId}
-              >
-                {saving ? "Saving..." : "Save"}
-              </Button>
+            <div className="flex-1 min-w-0 space-y-2">
+              <Label>Generated SQL</Label>
+              <div className="relative bg-card border border-border rounded-md overflow-hidden h-full">
+                <div className="absolute left-0 top-0 bottom-0 w-10 bg-muted border-r border-border flex flex-col items-center py-2 text-[10px] font-mono text-muted-foreground/40">
+                  {(() => {
+                    const lines = (editing ? `UPDATE flights
+SET aircraft_id = ${form.aircraftId || "?"},
+    origin_airport_id = ${form.originAirportId || "?"},
+    destination_airport_id = ${form.destinationAirportId || "?"},
+    status = '${form.status}'
+WHERE id = ${editing.id};` : form.aircraftId && form.originAirportId && form.destinationAirportId ? `INSERT INTO flights (aircraft_id, origin_airport_id, destination_airport_id, status, created_at)
+VALUES (
+  ${form.aircraftId},
+  ${form.originAirportId},
+  ${form.destinationAirportId},
+  '${form.status}',
+  NOW()
+);` : `-- Select aircraft, origin, and destination
+-- to generate INSERT query`).split("\n");
+                    return Array.from({ length: lines.length }, (_, i) => (
+                      <span key={i} className="leading-[20px]">{i + 1}</span>
+                    ));
+                  })()}
+                </div>
+                <pre
+                  className="pl-10 py-2 text-[13px] leading-[20px] font-mono overflow-auto h-full"
+                  dangerouslySetInnerHTML={{
+                    __html: editing
+                      ? `<span class="sql-keyword">UPDATE</span> <span class="sql-ident">flights</span>\n<span class="sql-keyword">SET</span> <span class="sql-ident">aircraft_id</span> = <span class="sql-number">${form.aircraftId || "?"}</span>,\n    <span class="sql-ident">origin_airport_id</span> = <span class="sql-number">${form.originAirportId || "?"}</span>,\n    <span class="sql-ident">destination_airport_id</span> = <span class="sql-number">${form.destinationAirportId || "?"}</span>,\n    <span class="sql-ident">status</span> = <span class="sql-string">'${form.status}'</span>\n<span class="sql-keyword">WHERE</span> <span class="sql-ident">id</span> = <span class="sql-number">${editing.id}</span>;`
+                      : form.aircraftId && form.originAirportId && form.destinationAirportId
+                        ? `<span class="sql-keyword">INSERT</span> <span class="sql-keyword">INTO</span> <span class="sql-ident">flights</span> (<span class="sql-ident">aircraft_id</span>, <span class="sql-ident">origin_airport_id</span>, <span class="sql-ident">destination_airport_id</span>, <span class="sql-ident">status</span>, <span class="sql-ident">created_at</span>)\n<span class="sql-keyword">VALUES</span> (\n  <span class="sql-number">${form.aircraftId}</span>,\n  <span class="sql-number">${form.originAirportId}</span>,\n  <span class="sql-number">${form.destinationAirportId}</span>,\n  <span class="sql-string">'${form.status}'</span>,\n  <span class="sql-keyword">NOW</span>()\n);`
+                        : `<span class="sql-comment">-- Select aircraft, origin, and destination</span>\n<span class="sql-comment">-- to generate INSERT query</span>`
+                  }}
+                />
+              </div>
             </div>
           </div>
         </DialogContent>

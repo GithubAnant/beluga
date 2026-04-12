@@ -255,35 +255,72 @@ export default function AirportsPage() {
 
       {/* Airport Dialog */}
       <Dialog open={airportDialogOpen} onOpenChange={setAirportDialogOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-[1100px] h-[480px]">
           <DialogHeader>
             <DialogTitle>{editingAirport ? "Edit Airport" : "Add Airport"}</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 py-2">
-            {error && <div className="p-2 rounded border border-red-500/30 bg-red-500/10 text-red-400 text-sm">{error}</div>}
-            <div className="space-y-2">
-              <Label>Name</Label>
-              <Input value={airportForm.name} onChange={(e) => setAirportForm({ ...airportForm, name: e.target.value })} placeholder="Indira Gandhi International" />
-            </div>
-            <div className="space-y-2">
-              <Label>IATA Code (unique)</Label>
-              <Input value={airportForm.code} onChange={(e) => setAirportForm({ ...airportForm, code: e.target.value })} placeholder="DEL" maxLength={10} />
-            </div>
-            <div className="grid grid-cols-2 gap-3">
+          <div className="flex gap-6 h-full py-2">
+            <div className="w-[340px] shrink-0 space-y-4 overflow-y-auto">
+              {error && <div className="p-2 rounded border border-red-500/30 bg-red-500/10 text-red-400 text-sm">{error}</div>}
               <div className="space-y-2">
-                <Label>Latitude</Label>
-                <Input type="number" step="any" value={airportForm.latitude} onChange={(e) => setAirportForm({ ...airportForm, latitude: e.target.value })} placeholder="28.5562" />
+                <Label>Name</Label>
+                <Input value={airportForm.name} onChange={(e) => setAirportForm({ ...airportForm, name: e.target.value })} placeholder="Indira Gandhi International" />
               </div>
               <div className="space-y-2">
-                <Label>Longitude</Label>
-                <Input type="number" step="any" value={airportForm.longitude} onChange={(e) => setAirportForm({ ...airportForm, longitude: e.target.value })} placeholder="77.1000" />
+                <Label>IATA Code (unique)</Label>
+                <Input value={airportForm.code} onChange={(e) => setAirportForm({ ...airportForm, code: e.target.value })} placeholder="DEL" maxLength={10} />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label>Latitude</Label>
+                  <Input type="number" step="any" value={airportForm.latitude} onChange={(e) => setAirportForm({ ...airportForm, latitude: e.target.value })} placeholder="28.5562" />
+                </div>
+                <div className="space-y-2">
+                  <Label>Longitude</Label>
+                  <Input type="number" step="any" value={airportForm.longitude} onChange={(e) => setAirportForm({ ...airportForm, longitude: e.target.value })} placeholder="77.1000" />
+                </div>
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <Button variant="outline" onClick={() => setAirportDialogOpen(false)}>Cancel</Button>
+                <Button onClick={handleSaveAirport} disabled={saving || !airportForm.name || !airportForm.code || !airportForm.latitude || !airportForm.longitude}>
+                  {saving ? "Saving..." : "Save"}
+                </Button>
               </div>
             </div>
-            <div className="flex justify-end gap-2 pt-2">
-              <Button variant="outline" onClick={() => setAirportDialogOpen(false)}>Cancel</Button>
-              <Button onClick={handleSaveAirport} disabled={saving || !airportForm.name || !airportForm.code || !airportForm.latitude || !airportForm.longitude}>
-                {saving ? "Saving..." : "Save"}
-              </Button>
+            <div className="flex-1 min-w-0 space-y-2">
+              <Label>Generated SQL</Label>
+              <div className="relative bg-card border border-border rounded-md overflow-hidden h-full">
+                <div className="absolute left-0 top-0 bottom-0 w-10 bg-muted border-r border-border flex flex-col items-center py-2 text-[10px] font-mono text-muted-foreground/40">
+                  {(() => {
+                    const lines = (editingAirport ? `UPDATE airports
+SET name = '${airportForm.name}',
+    code = '${airportForm.code}',
+    latitude = ${airportForm.latitude},
+    longitude = ${airportForm.longitude}
+WHERE id = ${editingAirport.id};` : airportForm.name && airportForm.code && airportForm.latitude && airportForm.longitude ? `INSERT INTO airports (name, code, latitude, longitude)
+VALUES (
+  '${airportForm.name}',
+  '${airportForm.code}',
+  ${airportForm.latitude},
+  ${airportForm.longitude}
+);` : `-- Fill in all fields
+-- to generate INSERT query`).split("\n");
+                    return Array.from({ length: lines.length }, (_, i) => (
+                      <span key={i} className="leading-[20px]">{i + 1}</span>
+                    ));
+                  })()}
+                </div>
+                <pre
+                  className="pl-10 py-2 text-[13px] leading-[20px] font-mono overflow-auto h-full"
+                  dangerouslySetInnerHTML={{
+                    __html: editingAirport
+                      ? `<span class="sql-keyword">UPDATE</span> <span class="sql-ident">airports</span>\n<span class="sql-keyword">SET</span> <span class="sql-ident">name</span> = <span class="sql-string">'${airportForm.name}'</span>,\n    <span class="sql-ident">code</span> = <span class="sql-string">'${airportForm.code}'</span>,\n    <span class="sql-ident">latitude</span> = <span class="sql-number">${airportForm.latitude}</span>,\n    <span class="sql-ident">longitude</span> = <span class="sql-number">${airportForm.longitude}</span>\n<span class="sql-keyword">WHERE</span> <span class="sql-ident">id</span> = <span class="sql-number">${editingAirport.id}</span>;`
+                      : airportForm.name && airportForm.code && airportForm.latitude && airportForm.longitude
+                        ? `<span class="sql-keyword">INSERT</span> <span class="sql-keyword">INTO</span> <span class="sql-ident">airports</span> (<span class="sql-ident">name</span>, <span class="sql-ident">code</span>, <span class="sql-ident">latitude</span>, <span class="sql-ident">longitude</span>)\n<span class="sql-keyword">VALUES</span> (\n  <span class="sql-string">'${airportForm.name}'</span>,\n  <span class="sql-string">'${airportForm.code}'</span>,\n  <span class="sql-number">${airportForm.latitude}</span>,\n  <span class="sql-number">${airportForm.longitude}</span>\n);`
+                        : `<span class="sql-comment">-- Fill in all fields</span>\n<span class="sql-comment">-- to generate INSERT query</span>`
+                  }}
+                />
+              </div>
             </div>
           </div>
         </DialogContent>
@@ -291,31 +328,68 @@ export default function AirportsPage() {
 
       {/* Runway Dialog */}
       <Dialog open={runwayDialogOpen} onOpenChange={setRunwayDialogOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-[1100px] h-[480px]">
           <DialogHeader>
             <DialogTitle>{editingRunway ? "Edit Runway" : "Add Runway"}</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 py-2">
-            {error && <div className="p-2 rounded border border-red-500/30 bg-red-500/10 text-red-400 text-sm">{error}</div>}
-            <div className="space-y-2">
-              <Label>Designation</Label>
-              <Input value={runwayForm.name} onChange={(e) => setRunwayForm({ ...runwayForm, name: e.target.value })} placeholder="09/27" />
-            </div>
-            <div className="grid grid-cols-2 gap-3">
+          <div className="flex gap-6 h-full py-2">
+            <div className="w-[340px] shrink-0 space-y-4 overflow-y-auto">
+              {error && <div className="p-2 rounded border border-red-500/30 bg-red-500/10 text-red-400 text-sm">{error}</div>}
               <div className="space-y-2">
-                <Label>Length (meters)</Label>
-                <Input type="number" value={runwayForm.lengthM} onChange={(e) => setRunwayForm({ ...runwayForm, lengthM: e.target.value })} placeholder="3810" />
+                <Label>Designation</Label>
+                <Input value={runwayForm.name} onChange={(e) => setRunwayForm({ ...runwayForm, name: e.target.value })} placeholder="09/27" />
               </div>
-              <div className="space-y-2">
-                <Label>Heading (degrees)</Label>
-                <Input type="number" value={runwayForm.heading} onChange={(e) => setRunwayForm({ ...runwayForm, heading: e.target.value })} placeholder="90" />
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label>Length (meters)</Label>
+                  <Input type="number" value={runwayForm.lengthM} onChange={(e) => setRunwayForm({ ...runwayForm, lengthM: e.target.value })} placeholder="3810" />
+                </div>
+                <div className="space-y-2">
+                  <Label>Heading (degrees)</Label>
+                  <Input type="number" value={runwayForm.heading} onChange={(e) => setRunwayForm({ ...runwayForm, heading: e.target.value })} placeholder="90" />
+                </div>
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <Button variant="outline" onClick={() => setRunwayDialogOpen(false)}>Cancel</Button>
+                <Button onClick={handleSaveRunway} disabled={saving || !runwayForm.name || !runwayForm.lengthM || !runwayForm.heading}>
+                  {saving ? "Saving..." : "Save"}
+                </Button>
               </div>
             </div>
-            <div className="flex justify-end gap-2 pt-2">
-              <Button variant="outline" onClick={() => setRunwayDialogOpen(false)}>Cancel</Button>
-              <Button onClick={handleSaveRunway} disabled={saving || !runwayForm.name || !runwayForm.lengthM || !runwayForm.heading}>
-                {saving ? "Saving..." : "Save"}
-              </Button>
+            <div className="flex-1 min-w-0 space-y-2">
+              <Label>Generated SQL</Label>
+              <div className="relative bg-card border border-border rounded-md overflow-hidden h-full">
+                <div className="absolute left-0 top-0 bottom-0 w-10 bg-muted border-r border-border flex flex-col items-center py-2 text-[10px] font-mono text-muted-foreground/40">
+                  {(() => {
+                    const lines = (editingRunway ? `UPDATE runways
+SET name = '${runwayForm.name}',
+    length_m = ${runwayForm.lengthM},
+    heading = ${runwayForm.heading}
+WHERE id = ${editingRunway.id};` : targetAirportId && runwayForm.name && runwayForm.lengthM && runwayForm.heading ? `INSERT INTO runways (airport_id, name, length_m, heading)
+VALUES (
+  ${targetAirportId},
+  '${runwayForm.name}',
+  ${runwayForm.lengthM},
+  ${runwayForm.heading}
+);` : `-- Select airport first,
+-- then fill in runway details
+-- to generate INSERT query`).split("\n");
+                    return Array.from({ length: lines.length }, (_, i) => (
+                      <span key={i} className="leading-[20px]">{i + 1}</span>
+                    ));
+                  })()}
+                </div>
+                <pre
+                  className="pl-10 py-2 text-[13px] leading-[20px] font-mono overflow-auto h-full"
+                  dangerouslySetInnerHTML={{
+                    __html: editingRunway
+                      ? `<span class="sql-keyword">UPDATE</span> <span class="sql-ident">runways</span>\n<span class="sql-keyword">SET</span> <span class="sql-ident">name</span> = <span class="sql-string">'${runwayForm.name}'</span>,\n    <span class="sql-ident">length_m</span> = <span class="sql-number">${runwayForm.lengthM}</span>,\n    <span class="sql-ident">heading</span> = <span class="sql-number">${runwayForm.heading}</span>\n<span class="sql-keyword">WHERE</span> <span class="sql-ident">id</span> = <span class="sql-number">${editingRunway.id}</span>;`
+                      : targetAirportId && runwayForm.name && runwayForm.lengthM && runwayForm.heading
+                        ? `<span class="sql-keyword">INSERT</span> <span class="sql-keyword">INTO</span> <span class="sql-ident">runways</span> (<span class="sql-ident">airport_id</span>, <span class="sql-ident">name</span>, <span class="sql-ident">length_m</span>, <span class="sql-ident">heading</span>)\n<span class="sql-keyword">VALUES</span> (\n  <span class="sql-number">${targetAirportId}</span>,\n  <span class="sql-string">'${runwayForm.name}'</span>,\n  <span class="sql-number">${runwayForm.lengthM}</span>,\n  <span class="sql-number">${runwayForm.heading}</span>\n);`
+                        : `<span class="sql-comment">-- Select airport first,</span>\n<span class="sql-comment">-- then fill in runway details</span>\n<span class="sql-comment">-- to generate INSERT query</span>`
+                  }}
+                />
+              </div>
             </div>
           </div>
         </DialogContent>
