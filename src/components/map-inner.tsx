@@ -24,19 +24,24 @@ interface MapInnerProps {
 }
 
 function getPlaneIcon(heading: number, status: string, isSelected: boolean) {
-  const size = isSelected ? 42 : 32;
+  const isLanded = status === "landed" || status === "arrived";
+  const baseSize = isLanded ? 22 : 32;
+  const size = isSelected ? Math.round(baseSize * 1.3) : baseSize;
   const rotation = heading - 90;
 
   const statusColors: Record<string, string> = {
     enroute: "#3b82f6",
     landing: "#f59e0b",
     takeoff: "#22c55e",
-   taxiing: "#6b7280",
+    taxiing: "#6b7280",
     holding: "#a855f7",
+    landed: "#94a3b8",
+    arrived: "#94a3b8",
   };
   const color = statusColors[status] || "#3b82f6";
   const bg = isSelected ? "white" : "transparent";
   const stroke = isSelected ? "2" : "0";
+  const opacity = isLanded ? "0.6" : "1";
 
   return L.divIcon({
     html: `<div style="width:${size}px;height:${size}px;transform:rotate(${rotation}deg);display:flex;align-items:center;justify-content:center;filter:drop-shadow(0 2px 3px rgba(0,0,0,0.4));">
