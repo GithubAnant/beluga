@@ -141,6 +141,28 @@
   margin: 8px 10px;
 }
 
+/* SQL syntax highlighting */
+.sql-keyword {
+  color: #c792ea;
+  font-weight: 600;
+}
+.sql-string {
+  color: #c3e88d;
+}
+.sql-number {
+  color: #f78c6c;
+}
+.sql-comment {
+  color: #546e7a;
+  font-style: italic;
+}
+.sql-operator {
+  color: #89ddff;
+}
+.sql-ident {
+  color: #82aaff;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
