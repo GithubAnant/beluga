@@ -1,0 +1,515 @@
+Delhi Technological University
+Department of Computer Science and Engineering
+
+
+
+CS210 DBMS LAB FILE
+
+Submitted By
+Anant Singhal (24/CS/056),
+Anant Chaudhary (24/CS/055)
+
+
+Submitted To
+Dr. Minni Jain
+
+
+
+Project Overview
+Project Introduction
+Beluga is a high-performance, web-based Air Traffic Control (ATC) simulator designed to demonstrate real-time data management, complex relational queries, and live simulation of dynamic systems. By providing a centralized control tower dashboard, this system transforms raw flight telemetry data into an interactive, data-driven visualization of airspace management.
+
+
+
+
+The Problem Landscape
+In real-world air traffic control, managing flight data involves handling:
+High-Frequency Inserts: Aircraft positions are recorded every few seconds, generating thousands of rows in short timeframes.
+Complex Relationships: Flights connect aircraft to airports, runways, and safety alerts through multiple foreign key chains.
+Real-Time State Queries: The system must always know the latest position of every aircraft, not its entire history, requiring efficient "latest record per group" queries.
+Conflict Detection: Pairwise comparison of all active flights to detect dangerous proximity in both horizontal distance and vertical separation.
+
+
+
+
+
+Solution & Purpose
+Beluga addresses these challenges by offering a single point of truth for airspace state. The purpose of this system is to:
+Simulate Flight Lifecycles: Track a flight from its scheduled departure through enroute, landing, and landed states with realistic position updates.
+Enforce Safety Constraints: Utilize runway occupancy checks, foreign key constraints, and application-level validation to ensure data integrity at every step.
+Demonstrate Advanced SQL: Showcase subqueries, self-joins, aggregate functions, conditional counting (CASE WHEN), custom sorting (FIELD()), transactions, and raw SQL alongside ORM-generated queries.
+
+
+
+Core High-Level Features
+Real-Time Flight Map: Interactive Leaflet.js map with moving aircraft icons, color-coded by flight status, updating every 2 seconds.
+Runway Assignment Engine: Assign incoming flights to available runways, enforce single-occupancy rules, and clear runways upon landing.
+Conflict Detection System: Automatic pairwise proximity checks with severity-scaled alerts (critical, high, medium, low).
+Operations Analytics Dashboard: Aggregate queries showing flight distributions, airport throughput, runway utilization, airline statistics, and alert resolution rates.
+SQL Query Editor: A built-in IDE with syntax highlighting, query templates, execution history, and direct database access.
+Full CRUD Management: Create, read, update, and delete operations for airports, aircraft, flights, and runways with transactional safety.
+
+System Description
+Technical Architecture
+The system is built on a modern Full-Stack Architecture using Next.js, which unifies the frontend and backend into a single deployable application. The UI layer (React), the API layer (Next.js Route Handlers), and the data layer (MySQL via Prisma ORM) are all integrated within one framework, enabling server-side rendering, API co-location, and type-safe database access.
+
+
+
+
+Frontend Tier (The UI)
+Technology: React 19.2.4 with Next.js 16.2.3
+Role: Acts as the primary interface for the air traffic controller. React provides a reactive, component-driven environment. SWR (Stale-While-Revalidate) handles automatic data fetching with configurable refresh intervals (2s for positions, 3s for alerts, 5s for flights and runways), ensuring the dashboard reflects live simulation state without manual refreshes.
+Mapping: Leaflet.js 1.9.4 with react-leaflet 5.0.0 renders the interactive map with CartoDB Dark tiles, custom SVG aircraft markers rotated by heading, and click-to-select interactions.
+Components: Built with shadcn/ui component library (Radix UI primitives + Tailwind CSS), providing accessible dialogs, dropdowns, tables, tabs, badges, and tooltips.
+
+
+
+
+
+Backend Tier (The Logic)
+Technology: Next.js 16.2.3 Route Handlers (App Router)
+Role: Handles all API routing and business logic. Each route handler validates inputs, enforces constraints (runway occupancy, foreign key checks, unique callsigns), and orchestrates database transactions. The simulation engine runs server-side as a setInterval timer, ticking every 2 seconds to advance flight positions and detect conflicts.
+
+
+
+
+
+Database Tier (The Data)
+Technology: MySQL
+Interface: Prisma 6.19.3 ORM
+Role: Provides persistent storage for all records across 7 tables. Prisma translates TypeScript model definitions into SQL DDL and generates a type-safe client. For complex queries (analytics, latest-position lookups, conflict detection), the app uses raw SQL via Prisma's $queryRaw and $queryRawUnsafe methods.
+
+
+
+Development Environment
+Language: TypeScript 5
+Framework: Next.js 16.2.3 (React 19.2.4)
+Package Manager: pnpm
+Styling: Tailwind CSS 4 with oklch color system
+Icons: Lucide React 1.8.0
+Data Fetching: SWR 2.4.1
+
+Functional Requirements
+Administrative Functions
+The system provides a comprehensive suite of CRUD (Create, Read, Update, Delete) operations to ensure the air traffic database remains current.
+
+
+
+
+Airport & Runway Management
+REQ-ADD-AIRPORT: The system shall allow users to register new airports by capturing Name, IATA Code, Latitude, and Longitude.
+REQ-UPDATE-AIRPORT: Users shall be able to modify airport metadata (e.g., correcting coordinates or renaming).
+REQ-DELETE-AIRPORT: The system shall allow removal of airport records only when no flights reference the airport, cascading deletion to runways and their assignments.
+REQ-ADD-RUNWAY: Users shall be able to add runways to airports, specifying Name (e.g., "09/27"), Length (meters), and Heading (degrees).
+REQ-DELETE-RUNWAY: The system shall block deletion of runways with active assignments.
+
+
+
+
+
+Aircraft & Flight Management
+REQ-ADD-AIRCRAFT: The system shall create aircraft records with a unique Callsign, Type (e.g., "Boeing 787-8"), and Airline.
+REQ-ADD-FLIGHT: The system shall create flights linking an Aircraft to an Origin Airport and Destination Airport, with an initial status of scheduled, enroute, or landing.
+REQ-FLIGHT-POSITION: When a flight is created with enroute or landing status, the system shall automatically generate an initial position record using the origin airport's coordinates.
+REQ-DELETE-FLIGHT: Deleting a flight shall cascade-delete all child records (positions, runway assignments, alerts) within a transaction.
+
+
+
+
+
+Operational Functions
+Simulation Engine
+REQ-SIM-START: Users shall be able to start a simulation that ticks every 2 seconds, advancing all enroute and landing flights toward their destinations.
+REQ-SIM-MOVEMENT: Each tick shall calculate new positions using haversine distance, bearing formulas, and altitude/speed adjustments.
+REQ-SIM-LANDING: Flights within 30km of their destination shall automatically transition to landing status with gradual descent.
+REQ-SIM-LANDED: Flights with altitude below 500ft shall transition to landed status, and their runway assignments shall be automatically cleared.
+REQ-SIM-CONFLICTS: Each tick shall perform pairwise conflict detection across all active flights, creating alerts for pairs within 50km horizontal and 1000ft vertical separation.
+
+Runway Operations
+REQ-ASSIGN-RUNWAY: Assigning a flight to a runway shall verify the runway is unoccupied and the flight is enroute, then insert an assignment record and update the flight status to landing within a transaction.
+REQ-CLEAR-RUNWAY: Clearing a runway shall set the assignment's cleared_at timestamp and update the flight status to landed within a transaction.
+
+Alert Management
+REQ-ALERTS-FEED: The system shall display all unresolved alerts with severity badges, flight callsigns, and distance/separation details.
+REQ-RESOLVE-ALERT: Users shall be able to resolve alerts, setting the resolved_at timestamp.
+
+
+
+
+Dashboard & Analytics
+REQ-DASH-MAP: The dashboard shall display a real-time interactive map with aircraft markers updated every 2 seconds.
+REQ-ANALYTICS-OVERVIEW: The analytics page shall show total counts (flights, aircraft, airports, runways, positions, alerts), flight status distributions, and average positions per flight.
+REQ-ANALYTICS-ALERTS: Alert analytics shall display breakdowns by severity and type, plus resolution rate statistics.
+REQ-ANALYTICS-AIRPORTS: Airport analytics shall show departures vs arrivals per airport and runway utilization metrics.
+REQ-ANALYTICS-AIRLINES: Airline analytics shall show aircraft counts and flight volumes per airline.
+
+Database Design
+Relational Data Schema
+The database is structured with 7 tables across 2 enum types, designed to minimize redundancy, enforce referential integrity, and support high-frequency inserts for position tracking.
+
+Table Name           | Primary Key | Foreign Keys                                                                        | Key Attributes
+airports             | id          | None                                                                                | name, code (UNIQUE), latitude, longitude
+aircraft             | id          | None                                                                                | callsign (UNIQUE), type, airline
+runways              | id          | airport_id -> airports                                                              | name, length_m, heading
+flights              | id          | aircraft_id -> aircraft, origin_airport_id -> airports, destination_airport_id -> airports | status (ENUM), created_at, updated_at
+flight_positions     | id          | flight_id -> flights                                                                | latitude, longitude, altitude, heading, speed, recorded_at
+runway_assignments   | id          | runway_id -> runways, flight_id -> flights                                          | assigned_at, cleared_at (nullable)
+alerts               | id          | flight_id -> flights                                                                | type (ENUM), severity (ENUM), message, created_at, resolved_at (nullable)
+
+
+
+Table Structures (CREATE TABLE SQL)
+
+1. airports
+CREATE TABLE airports (
+    id        INTEGER NOT NULL AUTO_INCREMENT,
+    name      VARCHAR(100) NOT NULL,
+    code      VARCHAR(10) NOT NULL,
+    latitude  DOUBLE NOT NULL,
+    longitude DOUBLE NOT NULL,
+    UNIQUE INDEX airports_code_key(code),
+    PRIMARY KEY (id)
+);
+
+Sample Data:
+id  | name                          | code | latitude  | longitude
+1   | Indira Gandhi International   | DEL  | 28.5562   | 77.1000
+2   | Chhatrapati Shivaji Maharaj   | BOM  | 19.0896   | 72.8656
+3   | Kempegowda International      | BLR  | 13.1986   | 77.7066
+4   | Netaji Subhas Chandra Bose    | CCU  | 22.6547   | 88.4467
+5   | John F. Kennedy International | JFK  | 40.6413   | -73.7781
+6   | Heathrow                      | LHR  | 51.4700   | -0.4543
+7   | Dubai International           | DXB  | 25.2532   | 55.3657
+... (56 airports total covering India, US, Europe, Middle East, Asia)
+
+
+2. aircraft
+CREATE TABLE aircraft (
+    id        INTEGER NOT NULL AUTO_INCREMENT,
+    callsign  VARCHAR(20) NOT NULL,
+    type      VARCHAR(50) NOT NULL,
+    airline   VARCHAR(100) NOT NULL,
+    UNIQUE INDEX aircraft_callsign_key(callsign),
+    PRIMARY KEY (id)
+);
+
+Sample Data:
+id  | callsign | type             | airline
+1   | AI101    | Boeing 787-8     | Air India
+2   | 6E202    | Airbus A320neo   | IndiGo
+3   | UK303    | Airbus A320-200  | Vistara
+4   | SG404    | Boeing 737-800   | SpiceJet
+5   | AI505    | Boeing 777-300ER | Air India
+6   | 6E606    | Airbus A321neo   | IndiGo
+7   | UK707    | Boeing 787-9     | Vistara
+8   | SG808    | Boeing 737 MAX 8 | SpiceJet
+
+
+3. runways
+CREATE TABLE runways (
+    id         INTEGER NOT NULL AUTO_INCREMENT,
+    airport_id INTEGER NOT NULL,
+    name       VARCHAR(20) NOT NULL,
+    length_m   INTEGER NOT NULL,
+    heading    INTEGER NOT NULL,
+    PRIMARY KEY (id)
+);
+
+Sample Data (Delhi Airport runways):
+id  | airport_id | name  | length_m | heading
+1   | 1          | 09/27 | 3810     | 90
+2   | 1          | 10/28 | 4430     | 100
+3   | 1          | 11/29 | 2813     | 110
+
+
+4. flights
+CREATE TABLE flights (
+    id                     INTEGER NOT NULL AUTO_INCREMENT,
+    aircraft_id            INTEGER NOT NULL,
+    origin_airport_id      INTEGER NOT NULL,
+    destination_airport_id INTEGER NOT NULL,
+    status                 ENUM('scheduled', 'enroute', 'landing', 'landed') NOT NULL DEFAULT 'scheduled',
+    created_at             DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    updated_at             DATETIME(3) NOT NULL,
+    INDEX flights_status_idx(status),
+    PRIMARY KEY (id)
+);
+
+Sample Data:
+id  | aircraft_id | origin_airport_id | destination_airport_id | status    | created_at
+1   | 1           | 2 (BOM)           | 1 (DEL)                | enroute   | 2026-04-20 10:00:00
+2   | 2           | 3 (BLR)           | 1 (DEL)                | enroute   | 2026-04-20 10:00:00
+3   | 3           | 4 (CCU)           | 1 (DEL)                | enroute   | 2026-04-20 10:00:00
+4   | 4           | 1 (DEL)           | 2 (BOM)                | scheduled | 2026-04-20 10:00:00
+5   | 5           | 1 (DEL)           | 3 (BLR)                | scheduled | 2026-04-20 10:00:00
+6   | 6           | 2 (BOM)           | 1 (DEL)                | landing   | 2026-04-20 10:00:00
+
+
+5. flight_positions
+CREATE TABLE flight_positions (
+    id          INTEGER NOT NULL AUTO_INCREMENT,
+    flight_id   INTEGER NOT NULL,
+    latitude    DOUBLE NOT NULL,
+    longitude   DOUBLE NOT NULL,
+    altitude    DOUBLE NOT NULL,
+    heading     DOUBLE NOT NULL,
+    speed       DOUBLE NOT NULL,
+    recorded_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    INDEX idx_position_latest(flight_id, recorded_at DESC),
+    PRIMARY KEY (id)
+);
+
+Sample Data (initial seed positions):
+id  | flight_id | latitude | longitude | altitude | heading | speed | recorded_at
+1   | 1         | 26.5000  | 75.5000   | 35000    | 35.0    | 480   | 2026-04-20 10:00:00
+2   | 2         | 25.8000  | 77.3000   | 33000    | 10.0    | 450   | 2026-04-20 10:00:00
+3   | 3         | 27.5000  | 79.8000   | 34000    | 300.0   | 460   | 2026-04-20 10:00:00
+4   | 6         | 28.8000  | 77.3000   | 8000     | 200.0   | 220   | 2026-04-20 10:00:00
+
+(This table grows rapidly during simulation -- a new row is inserted for every active flight every 2 seconds)
+
+
+6. runway_assignments
+CREATE TABLE runway_assignments (
+    id          INTEGER NOT NULL AUTO_INCREMENT,
+    runway_id   INTEGER NOT NULL,
+    flight_id   INTEGER NOT NULL,
+    assigned_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    cleared_at  DATETIME(3) NULL,
+    INDEX idx_runway_occupancy(runway_id, cleared_at),
+    PRIMARY KEY (id)
+);
+
+Sample Data:
+id  | runway_id | flight_id | assigned_at          | cleared_at
+1   | 1         | 6         | 2026-04-20 10:05:00  | NULL
+2   | 2         | 1         | 2026-04-20 10:12:00  | 2026-04-20 10:15:00
+
+(cleared_at = NULL means the runway is currently occupied; a non-NULL value means the flight has landed and the runway was freed)
+
+
+7. alerts
+CREATE TABLE alerts (
+    id          INTEGER NOT NULL AUTO_INCREMENT,
+    flight_id   INTEGER NOT NULL,
+    type        ENUM('conflict', 'proximity', 'runway') NOT NULL,
+    message     TEXT NOT NULL,
+    severity    ENUM('low', 'medium', 'high', 'critical') NOT NULL,
+    created_at  DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    resolved_at DATETIME(3) NULL,
+    PRIMARY KEY (id)
+);
+
+Sample Data:
+id  | flight_id | type     | severity | message                                              | created_at           | resolved_at
+1   | 1         | conflict | high     | Conflict with 6E202: 18.5km apart, 2000ft separation | 2026-04-20 10:08:00  | NULL
+2   | 2         | conflict | high     | Conflict with AI101: 18.5km apart, 2000ft separation | 2026-04-20 10:08:00  | NULL
+3   | 6         | conflict | critical | Conflict with UK303: 8.2km apart, 500ft separation   | 2026-04-20 10:10:00  | 2026-04-20 10:11:00
+
+
+
+Foreign Key Constraints (ALTER TABLE statements)
+
+ALTER TABLE runways ADD CONSTRAINT runways_airport_id_fkey
+    FOREIGN KEY (airport_id) REFERENCES airports(id);
+
+ALTER TABLE flights ADD CONSTRAINT flights_aircraft_id_fkey
+    FOREIGN KEY (aircraft_id) REFERENCES aircraft(id);
+
+ALTER TABLE flights ADD CONSTRAINT flights_origin_airport_id_fkey
+    FOREIGN KEY (origin_airport_id) REFERENCES airports(id);
+
+ALTER TABLE flights ADD CONSTRAINT flights_destination_airport_id_fkey
+    FOREIGN KEY (destination_airport_id) REFERENCES airports(id);
+
+ALTER TABLE flight_positions ADD CONSTRAINT flight_positions_flight_id_fkey
+    FOREIGN KEY (flight_id) REFERENCES flights(id);
+
+ALTER TABLE runway_assignments ADD CONSTRAINT runway_assignments_runway_id_fkey
+    FOREIGN KEY (runway_id) REFERENCES runways(id);
+
+ALTER TABLE runway_assignments ADD CONSTRAINT runway_assignments_flight_id_fkey
+    FOREIGN KEY (flight_id) REFERENCES flights(id);
+
+ALTER TABLE alerts ADD CONSTRAINT alerts_flight_id_fkey
+    FOREIGN KEY (flight_id) REFERENCES flights(id);
+
+
+
+
+
+
+
+
+Entity Relationships
+One-to-Many (Airport -> Runways): A single airport (e.g., DEL) can have multiple runways (09/27, 10/28, 11/29), but each runway belongs to one airport.
+One-to-Many (Airport -> Flights): An airport can be the origin or destination of many flights. Flights reference airports via two separate foreign keys (origin_airport_id, destination_airport_id).
+One-to-Many (Aircraft -> Flights): A single aircraft can operate multiple flights over time, but each flight is operated by one aircraft.
+One-to-Many (Flight -> Positions): A single flight accumulates many position records over time (one per simulation tick). This is the highest-volume table.
+One-to-Many (Flight -> Alerts): A flight may trigger multiple conflict alerts with different nearby aircraft.
+One-to-Many (Runway -> Assignments): A runway can have many assignments over time, but only one active assignment (where cleared_at IS NULL) at any moment.
+
+Relationship Diagram:
+airports --< runways --< runway_assignments >-- flights
+airports --< flights (as origin)                  |
+airports --< flights (as destination)              |
+aircraft --< flights                               |
+              flights --< flight_positions         |
+              flights --< alerts                   |
+
+(--< means "one-to-many")
+
+
+
+
+Data Integrity Rules
+Airport Code Uniqueness: The system enforces that no two airports share the same IATA code via a UNIQUE constraint.
+Callsign Uniqueness: No two aircraft can share the same callsign.
+Foreign Key Cascading: Flights cannot reference non-existent airports or aircraft. Deletion order respects the foreign key hierarchy (children before parents).
+Runway Single-Occupancy: Application-level validation ensures only one active assignment per runway at any time.
+Flight Status Validation: Runway assignment is only permitted for flights with enroute or landing status.
+
+
+
+Indexes
+The database uses strategic indexes to optimize the most frequent query patterns:
+
+Index Name           | Table              | Columns                          | Purpose
+airports_code_key    | airports           | code                             | Enforces unique airport codes + fast lookup by code
+aircraft_callsign_key| aircraft           | callsign                         | Enforces unique callsigns + fast lookup
+flights_status_idx   | flights            | status                           | Fast filtering of flights by status (e.g., all enroute flights)
+idx_position_latest  | flight_positions   | flight_id, recorded_at DESC      | Fast lookup of the most recent position for a flight
+idx_runway_occupancy | runway_assignments | runway_id, cleared_at            | Fast check if a runway is currently occupied
+
+
+
+Variables and Data Structures
+Prisma ORM Models
+The system utilizes TypeScript classes defined in schema.prisma as the blueprint for both the database schema and the type-safe query client.
+model Flight: Defines how a flight exists in code and the database simultaneously. It includes attributes like status: FlightStatus (an enum with values scheduled, enroute, landing, landed), relation fields to Aircraft, Airport (origin and destination), FlightPosition[], RunwayAssignment[], and Alert[].
+model FlightPosition: Tracks time-series location data with latitude, longitude, altitude, heading, speed, and recorded_at timestamp.
+
+
+
+
+
+Runtime Data Structures
+SWR Cache: Client-side data fetching library that maintains an in-memory cache of API responses, automatically revalidating at configured intervals (2s for positions, 3s for alerts, 5s for flights).
+Simulation State: A server-side module-level variable tracking whether the simulation is running, with a setInterval reference for the 2-second tick cycle.
+Haversine Distance Calculator: A pure function used in both the simulation engine and conflict detection to compute great-circle distances between coordinate pairs.
+Bearing Calculator: Computes the compass heading between two latitude/longitude points to orient aircraft movement.
+
+
+
+
+
+Key Configuration Variables
+DATABASE_URL: A global environment variable (e.g., mysql://root:password@localhost:3306/beluga) that defines the connection parameters for the entire application.
+Prisma Client: A singleton instance cached in globalThis to prevent multiple database connections during Next.js hot-reload in development.
+
+Non-Functional Requirements
+Performance and Reliability
+Real-Time Updates: The SWR-based polling system refreshes flight positions every 2 seconds, ensuring the map reflects simulation state with minimal latency.
+Simulation Throughput: The 2-second tick interval processes all active flights, inserts new position records, updates statuses, and runs conflict detection within a single cycle.
+Indexed Queries: The idx_position_latest composite index (flight_id, recorded_at DESC) ensures that the critical "latest position per flight" query executes efficiently even as the flight_positions table grows to thousands of rows.
+
+
+
+
+
+Security
+Database Integrity: All multi-step operations (create enroute flight + initial position, mark landed + clear runway, delete flight + cascade children) are wrapped in Prisma transactions ($transaction), ensuring atomicity -- if any step fails, all changes roll back.
+SQL Editor Safety: The SQL query editor uses Prisma's $queryRawUnsafe for SELECT queries and $executeRawUnsafe for write queries, with automatic detection of query type to route to the appropriate method.
+Constraint Enforcement: Both database-level constraints (UNIQUE, FOREIGN KEY) and application-level checks (runway occupancy, flight status validation) provide defense-in-depth.
+
+
+
+
+
+Usability and Scalability
+Intuitive Navigation: The sidebar provides a fixed, icon-driven menu with 6 sections (Dashboard, SQL Editor, Fleet, Flights, Airports, Analytics), reducing the learning curve.
+Dark Theme: The entire interface uses a dark color scheme (oklch-based) optimized for extended monitoring sessions, consistent with real-world ATC systems.
+Data Scaling: The relational MySQL schema with proper indexing supports scaling from a handful of seeded flights to hundreds of concurrent flights without query degradation.
+
+Output Section
+7.1 User Interface Screens
+The application is divided into six distinct modules accessible via the sidebar:
+
+
+
+
+Dashboard Screen
+Visuals: Interactive Leaflet.js map centered on Delhi with CartoDB Dark tiles. Aircraft appear as SVG plane icons rotated by their heading, color-coded by status (blue=enroute, amber=landing, green=takeoff, gray=landed). A right-side panel lists all flights with altitude and speed. A bottom bar displays active conflict alerts.
+Function: Gives the controller an immediate real-time view of the entire airspace. Click any aircraft to select it and the map pans smoothly to its location.
+Controls: Start/Stop Simulation button, Seed Database button, LIVE/PAUSED status badge.
+
+
+
+
+
+Fleet Management Screen
+Visuals: Table view listing all aircraft with ID, Callsign, Type, Airline, and Flight Count.
+Function: Full CRUD operations with SQL preview showing the generated INSERT/UPDATE statements. Unique constraint on callsign with user-friendly error messages.
+
+
+
+
+
+Flight Operations Screen
+Visuals: Table with Status badges (color-coded), Origin/Destination airport codes, Callsign, Airline, and timestamps.
+Function: Create flights with foreign key dropdowns (Aircraft, Origin Airport, Destination Airport, Status). Edit status transitions. Delete with cascading transaction cleanup.
+
+
+
+
+
+Airport Management Screen
+Visuals: Card-based grid layout. Each card shows airport name, IATA code, coordinates, departure/arrival counters, and nested runway list.
+Function: Add/edit airports and their runways. Delete with cascading removal of runways and assignments. Runway management includes name, length, and heading.
+
+Analytics Screen
+Visuals: Six metric cards (Active Flights, On Ground, Active Runways, Avg Positions, Active Alerts, Completion Rate). Multiple data tables showing flight status distribution, top airlines, airport traffic volume, runway utilization, and alert breakdowns by severity and type.
+Function: All metrics computed via raw SQL aggregate queries (GROUP BY, COUNT, SUM, CASE WHEN, AVG, FIELD()).
+
+SQL Editor Screen
+Visuals: Professional IDE-style editor with custom SQL syntax highlighting (keywords, strings, numbers, comments), line numbers, and a results table with execution time and row counts.
+Function: Execute arbitrary SQL queries directly against the database. 8 preset query templates (JOINs, GROUP BY, subqueries, EXPLAIN, SHOW TABLES). Query history panel tracking all executions.
+
+
+
+Transactions Used in the System
+Several operations use database transactions to ensure atomicity -- if any step fails, all steps are rolled back.
+
+Operation                   | What is in the Transaction                                        | Why
+Create flight (enroute)     | INSERT flight + INSERT initial position                           | Cannot have a flying plane with no position
+Mark flight as landed       | UPDATE runway_assignment cleared_at + UPDATE flight status         | Runway must be freed at the same time as landing
+Delete flight               | DELETE positions + DELETE assignments + DELETE alerts + DELETE flight| Must remove all child rows before parent (FK constraints)
+Delete airport              | DELETE runway_assignments + DELETE runways + DELETE airport         | Children must be deleted before parent
+Delete runway               | DELETE runway_assignments + DELETE runway                          | Assignment children first
+Assign runway               | INSERT runway_assignment + UPDATE flight status to landing         | Both must happen atomically
+Clear runway                | UPDATE assignment cleared_at + UPDATE flight status to landed      | Both must happen atomically
+
+Assumptions and Constraints
+Technical Assumptions
+Environment: It is assumed the host machine has Node.js 18+ and a running instance of MySQL.
+Persistence: The system assumes that the database schema has been initialized using Prisma migrations (npx prisma migrate deploy) and the Prisma client has been generated.
+Seed Data: The application provides a "Seed Database" button that populates 56 airports (India, US, Europe, Asia), 8 aircraft (Air India, IndiGo, Vistara, SpiceJet), 3 runways at Delhi, and 6 flights with initial positions.
+
+
+
+
+
+Project Constraints
+Authentication: The system does not include user authentication. It is assumed the application runs in a secure, local development environment.
+Single-Server Simulation: The simulation engine runs as a server-side setInterval within the Next.js process. It does not support distributed or multi-instance simulation.
+MySQL Dependency: The application requires a local or network-accessible MySQL server. The connection string is configured via the DATABASE_URL environment variable.
+
+Conclusion
+Summary of the System
+Beluga represents a sophisticated approach to simulating air traffic control operations using a relational database as the core state engine. By leveraging the real-time capabilities of Next.js with React, the type-safe database access of Prisma ORM, the interactive mapping of Leaflet.js, and the reliability of MySQL, it provides a compelling demonstration of how modern web technologies can model complex, time-sensitive systems.
+
+
+
+
+Final Value Proposition
+This project successfully demonstrates advanced database concepts including multi-table relational design, foreign key enforcement, transactional integrity, raw SQL aggregate queries, composite indexes for time-series data, and real-time state management. It brings these concepts to life through a visually engaging simulation where flights move across a map, land on runways, trigger conflict alerts, and generate analytics -- all driven by the SQL queries running underneath.
