@@ -69,36 +69,29 @@ Beluga addresses these challenges by offering a single point of truth for airspa
 
 The system is built on a modern **Full-Stack Architecture** using Next.js, which unifies the frontend and backend into a single deployable application. The UI layer (React), the API layer (Next.js Route Handlers), and the data layer (MySQL via Prisma ORM) are all integrated within one framework, enabling server-side rendering, API co-location, and type-safe database access.
 
-```
-┌──────────────────────────────────────────────────────────────────┐
-│                        CLIENT (Browser)                          │
-│  ┌────────────┐  ┌────────────┐  ┌────────────┐  ┌───────────┐  │
-│  │  Leaflet   │  │  SWR Data  │  │  shadcn/ui │  │  React    │  │
-│  │  Map View  │  │  Fetching  │  │ Components │  │  19.2.4   │  │
-│  └─────┬──────┘  └─────┬──────┘  └─────┬──────┘  └─────┬─────┘  │
-│        └───────────────┼───────────────┼───────────────┘         │
-│                        │ HTTP (REST)   │                         │
-├────────────────────────┼───────────────┼─────────────────────────┤
-│                   SERVER (Next.js 16.2.3)                        │
-│  ┌─────────────────────┴───────────────┴──────────────────────┐  │
-│  │               Route Handlers (App Router)                  │  │
-│  │  /api/flights  /api/airports  /api/simulation  /api/sql    │  │
-│  └─────────────────────┬──────────────────────────────────────┘  │
-│  ┌─────────────────────┴──────────────────────────────────────┐  │
-│  │             Simulation Engine (setInterval 2s)             │  │
-│  │  Position updates │ Status transitions │ Conflict detection│  │
-│  └─────────────────────┬──────────────────────────────────────┘  │
-│  ┌─────────────────────┴──────────────────────────────────────┐  │
-│  │                 Prisma ORM 6.19.3                          │  │
-│  │          ORM queries + Raw SQL ($queryRaw)                 │  │
-│  └─────────────────────┬──────────────────────────────────────┘  │
-├────────────────────────┼─────────────────────────────────────────┤
-│                   DATABASE (MySQL)                                │
-│  ┌─────────────────────┴──────────────────────────────────────┐  │
-│  │  airports │ aircraft │ runways │ flights │ flight_positions │  │
-│  │  runway_assignments │ alerts                               │  │
-│  └────────────────────────────────────────────────────────────┘  │
-└──────────────────────────────────────────────────────────────────┘
+```mermaid
+graph TB
+    subgraph Client["CLIENT (Browser)"]
+        Leaflet["Leaflet Map View"]
+        SWR["SWR Data Fetching"]
+        Shadcn["shadcn/ui Components"]
+        ReactLib["React 19.2.4"]
+    end
+
+    subgraph Server["SERVER (Next.js 16.2.3)"]
+        Routes["Route Handlers (App Router)\n/api/flights  /api/airports  /api/simulation  /api/sql"]
+        SimEngine["Simulation Engine (setInterval 2s)\nPosition updates | Status transitions | Conflict detection"]
+        Prisma["Prisma ORM 6.19.3\nORM queries + Raw SQL ($queryRaw)"]
+    end
+
+    subgraph Database["DATABASE (MySQL)"]
+        Tables["airports | aircraft | runways | flights\nflight_positions | runway_assignments | alerts"]
+    end
+
+    Client -->|"HTTP (REST)"| Routes
+    Routes --> SimEngine
+    SimEngine --> Prisma
+    Prisma -->|"SQL Queries"| Tables
 ```
 
 ### Frontend Tier (The UI)
@@ -350,6 +343,29 @@ CREATE TABLE flights (
 | `landing` | Flight is within 30km of destination, descending |
 | `landed` | Flight has touched down (altitude < 500ft) |
 
+**Flight Status State Diagram:**
+
+```mermaid
+stateDiagram-v2
+    [*] --> scheduled : Flight created
+    scheduled --> enroute : Simulation starts / manual update
+    enroute --> landing : Within 30km of destination
+    landing --> landed : Altitude drops below 500ft
+    landed --> [*]
+
+    note right of enroute
+        Position updated every 2s
+        Altitude ~35,000ft
+        Speed ~450-480 kts
+    end note
+
+    note right of landing
+        Gradual descent (max 800ft/tick)
+        Speed reducing (20 kts/tick)
+        Runway assigned
+    end note
+```
+
 **Sample Data:**
 
 | id | aircraft_id | origin | destination | status | created_at |
@@ -517,69 +533,78 @@ ALTER TABLE alerts ADD CONSTRAINT alerts_flight_id_fkey
 
 ### Entity-Relationship Diagram
 
-```
-                              ┌──────────────┐
-                              │   airports   │
-                              │──────────────│
-                              │ id (PK)      │
-                              │ name         │
-                              │ code (UQ)    │
-                              │ latitude     │
-                              │ longitude    │
-                              └──────┬───────┘
-                                     │
-                    ┌────────────────┼────────────────┐
-                    │ 1:N            │ 1:N             │ 1:N
-                    ▼                ▼                 ▼
-            ┌──────────────┐  (origin_airport)  (destination_airport)
-            │   runways    │         │                 │
-            │──────────────│         │                 │
-            │ id (PK)      │         │                 │
-            │ airport_id(FK)│        │                 │
-            │ name         │         │                 │
-            │ length_m     │         │                 │
-            │ heading      │         │                 │
-            └──────┬───────┘         │                 │
-                   │                 │                 │
-                   │ 1:N             │                 │
-                   ▼                 │                 │
-       ┌───────────────────┐         │                 │
-       │runway_assignments │         │                 │
-       │───────────────────│         │                 │
-       │ id (PK)           │         │                 │
-       │ runway_id (FK)    │◄────────┼─────────────────┘
-       │ flight_id (FK)────┼────┐    │
-       │ assigned_at       │    │    │
-       │ cleared_at        │    │    │
-       └───────────────────┘    │    │
-                                │    │
-            ┌──────────────┐    │    │    ┌──────────────┐
-            │   aircraft   │    │    │    │   flights    │
-            │──────────────│    │    │    │──────────────│
-            │ id (PK)      │    │    │    │ id (PK)      │
-            │ callsign(UQ) │    │    └───►│ origin_airport_id (FK)
-            │ type         │    │         │ dest_airport_id (FK)
-            │ airline      │    └────────►│ aircraft_id (FK)
-            └──────┬───────┘              │ status       │
-                   │ 1:N                  │ created_at   │
-                   └─────────────────────►│ updated_at   │
-                                          └──────┬───────┘
-                                                 │
-                                     ┌───────────┼───────────┐
-                                     │ 1:N       │ 1:N       │ 1:N
-                                     ▼           ▼           ▼
-                            ┌──────────────┐           ┌──────────┐
-                            │flight_positions│          │  alerts   │
-                            │──────────────│           │──────────│
-                            │ id (PK)      │           │ id (PK)  │
-                            │ flight_id(FK)│           │flight_id(FK)
-                            │ latitude     │           │ type     │
-                            │ longitude    │           │ severity │
-                            │ altitude     │           │ message  │
-                            │ heading      │           │created_at│
-                            │ speed        │           │resolved_at
-                            │ recorded_at  │           └──────────┘
-                            └──────────────┘
+```mermaid
+erDiagram
+    airports {
+        INT id PK
+        VARCHAR name
+        VARCHAR code UK
+        DOUBLE latitude
+        DOUBLE longitude
+    }
+
+    aircraft {
+        INT id PK
+        VARCHAR callsign UK
+        VARCHAR type
+        VARCHAR airline
+    }
+
+    runways {
+        INT id PK
+        INT airport_id FK
+        VARCHAR name
+        INT length_m
+        INT heading
+    }
+
+    flights {
+        INT id PK
+        INT aircraft_id FK
+        INT origin_airport_id FK
+        INT destination_airport_id FK
+        ENUM status
+        DATETIME created_at
+        DATETIME updated_at
+    }
+
+    flight_positions {
+        INT id PK
+        INT flight_id FK
+        DOUBLE latitude
+        DOUBLE longitude
+        DOUBLE altitude
+        DOUBLE heading
+        DOUBLE speed
+        DATETIME recorded_at
+    }
+
+    runway_assignments {
+        INT id PK
+        INT runway_id FK
+        INT flight_id FK
+        DATETIME assigned_at
+        DATETIME cleared_at
+    }
+
+    alerts {
+        INT id PK
+        INT flight_id FK
+        ENUM type
+        ENUM severity
+        TEXT message
+        DATETIME created_at
+        DATETIME resolved_at
+    }
+
+    airports ||--o{ runways : "has"
+    airports ||--o{ flights : "origin"
+    airports ||--o{ flights : "destination"
+    aircraft ||--o{ flights : "operates"
+    flights ||--o{ flight_positions : "tracked by"
+    flights ||--o{ runway_assignments : "assigned to"
+    flights ||--o{ alerts : "triggers"
+    runways ||--o{ runway_assignments : "used by"
 ```
 
 **Relationship Summary:**
@@ -846,55 +871,24 @@ FROM (
 
 ### Simulation Engine Flow
 
-```
-                    ┌─────────────────┐
-                    │  User clicks    │
-                    │ "Start Simulation│
-                    └────────┬────────┘
-                             │
-                             ▼
-                 ┌───────────────────────┐
-                 │  setInterval (2 sec)  │◄──────────────────────┐
-                 └───────────┬───────────┘                       │
-                             │                                   │
-                             ▼                                   │
-              ┌──────────────────────────────┐                   │
-              │ Fetch enroute/landing flights │                   │
-              │ + their latest positions      │                   │
-              └──────────────┬───────────────┘                   │
-                             │                                   │
-                             ▼                                   │
-              ┌──────────────────────────────┐                   │
-              │ For each flight:             │                   │
-              │  - Calculate haversine dist  │                   │
-              │  - Compute bearing to dest   │                   │
-              │  - Move 0.7-1.2% closer      │                   │
-              │  - Adjust altitude/speed      │                   │
-              └──────────────┬───────────────┘                   │
-                             │                                   │
-                             ▼                                   │
-              ┌──────────────────────────────┐                   │
-              │ INSERT new position record   │                   │
-              └──────────────┬───────────────┘                   │
-                             │                                   │
-                    ┌────────┴────────┐                          │
-                    ▼                 ▼                           │
-          ┌─────────────┐   ┌──────────────┐                     │
-          │ dist < 30km │   │ alt < 500ft  │                     │
-          │ -> landing  │   │ -> landed    │                     │
-          └─────────────┘   │ + clear runway│                    │
-                            └──────────────┘                     │
-                             │                                   │
-                             ▼                                   │
-              ┌──────────────────────────────┐                   │
-              │ Conflict Detection:          │                   │
-              │  Compare all active pairs    │                   │
-              │  H < 50km AND V < 1000ft?    │                   │
-              │  -> Create severity alert    │                   │
-              └──────────────┬───────────────┘                   │
-                             │                                   │
-                             └───────────────────────────────────┘
-                                      (next tick)
+```mermaid
+flowchart TD
+    A["User clicks 'Start Simulation'"] --> B["setInterval (2 sec)"]
+    B --> C["Fetch enroute/landing flights\n+ their latest positions"]
+    C --> D["For each flight:\n- Calculate haversine distance\n- Compute bearing to destination\n- Move 0.7-1.2% closer\n- Adjust altitude/speed"]
+    D --> E["INSERT new position record"]
+    E --> F{"Distance to\ndestination?"}
+    F -->|"< 30km"| G["Set status = 'landing'\nBegin descent"]
+    F -->|">= 30km"| I
+    G --> H{"Altitude?"}
+    H -->|"< 500ft"| J["Set status = 'landed'\n+ Clear runway assignment"]
+    H -->|">= 500ft"| I["Conflict Detection:\nCompare all active flight pairs"]
+    J --> I
+    I --> K{"Horizontal < 50km\nAND Vertical < 1000ft?"}
+    K -->|"Yes"| L["Create severity-scaled alert\nfor BOTH flights"]
+    K -->|"No"| M["No conflict"]
+    L --> B
+    M --> B
 ```
 
 ---
